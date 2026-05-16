@@ -1,0 +1,74 @@
+workflows:
+  ios-testflight:
+    name: iOS TestFlight
+    max_build_duration: 60
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+      vars:
+        BUNDLE_ID: com.nusha.messenger
+        APPLE_ID: zheniy314@icloud.com
+        APP_STORE_CONNECT_ISSUER_ID: Encrypted(...)
+        APP_STORE_CONNECT_KEY_IDENTIFIER: SC63PPA7VM
+        APP_STORE_CONNECT_PRIVATE_KEY: Encrypted(...)
+        CERTIFICATE_PRIVATE_KEY: Encrypted(...)
+      groups:
+        - apple_credentials
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: main
+          include: true
+    scripts:
+      - name: Set up code signing settings on Xcode project
+        script: |
+          xcode-project use-profiles
+      - name: Flutter pub get
+        script: |
+          flutter pub get
+      - name: Flutter build ipa
+        script: |
+          flutter build ipa --release \
+            --export-options-plist=/Users/builder/export_options.plist
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
+        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+        submit_to_testflight: true
+        groups:
+          - testers
+
+  android-release:
+    name: Android Release APK
+    max_build_duration: 30
+    environment:
+      flutter: stable
+      vars:
+        FIREBASE_APP_ID: 1:831245997772:android:7521d90ba70d32b4e09469
+        FIREBASE_PROJECT: kal616
+      groups:
+        - firebase_credentials
+    scripts:
+      - name: Flutter pub get
+        script: flutter pub get
+      - name: Build release APK
+        script: |
+          flutter build apk --release \
+            --build-name=1.1.0 --build-number=2
+    artifacts:
+      - build/app/outputs/flutter-apk/app-release.apk
+    publishing:
+      firebase:
+        firebase_token: $FIREBASE_TOKEN
+        android:
+          app_id: $FIREBASE_APP_ID
+          groups:
+            - testers
+          release_notes:
+            en-US: "Nusha3 v1.1.0 - WebRTC calls, video, conferences"
