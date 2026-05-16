@@ -7,10 +7,6 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
-val keyProps = Properties()
-val keyFile = file("C:/nusha3/key.properties")
-if (keyFile.exists()) keyProps.load(FileInputStream(keyFile))
-
 android {
     namespace = "com.nusha.messenger"
     compileSdk = flutter.compileSdkVersion
@@ -28,10 +24,15 @@ android {
 
     signingConfigs {
         create("release") {
-            keyAlias     = keyProps.getProperty("keyAlias")     ?: "nusha3"
-            keyPassword  = keyProps.getProperty("keyPassword")  ?: "nusha3pass"
-            storeFile    = file(keyProps.getProperty("storeFile") ?: "C:/nusha3/nusha3-release.jks")
-            storePassword= keyProps.getProperty("storePassword")?: "nusha3pass"
+            val ksFile = file("nusha3.jks")
+            if (ksFile.exists()) {
+                storeFile = ksFile
+                storePassword = System.getenv("KEY_STORE_PASSWORD") ?: "nusha3pass"
+                keyAlias = System.getenv("KEY_ALIAS") ?: "nusha3"
+                keyPassword = System.getenv("KEY_PASSWORD") ?: "nusha3pass"
+            } else {
+                storeFile = file("../../android/app/debug.keystore") 
+            }
         }
     }
 
