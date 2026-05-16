@@ -1,0 +1,81 @@
+name: iOS TestFlight Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+    timeout-minutes: 90
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.9'
+          channel: stable
+          cache: true
+
+      - name: Write App Store Connect key
+        run: |
+          mkdir -p ios/fastlane
+          echo "${{ secrets.APPLE_AUTH_KEY_P8 }}" > ios/fastlane/AuthKey_NP997PBKF9.p8
+          chmod 600 ios/fastlane/AuthKey_NP997PBKF9.p8
+
+      - name: Flutter pub get
+        run: flutter pub get
+
+      - name: Install CocoaPods
+        run: |
+          cd ios
+          pod install --repo-update
+        env:
+          LANG: en_US.UTF-8
+
+      - name: Build Flutter iOS (no codesign)
+        run: |
+          flutter build ios --release --no-codesign \
+            --build-name=1.1.0 \
+            --build-number=2251
+
+      - name: Archive and export IPA
+        run: |
+          cd ios
+          xcodebuild -workspace Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -archivePath ../build/ios/Runner.xcarchive \
+            archive \
+            CODE_SIGN_STYLE=Automatic \
+            DEVELOPMENT_TEAM=${{ secrets.APPLE_TEAM_ID }} \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath fastlane/AuthKey_NP997PBKF9.p8 \
+            -authenticationKeyID ${{ secrets.APPLE_KEY_ID }} \
+            -authenticationKeyIssuerID ${{ secrets.APPLE_ISSUER_ID }}
+          
+          xcodebuild -exportArchive \
+            -archivePath ../build/ios/Runner.xcarchive \
+            -exportPath ../build/ios/ipa/ \
+            -exportOptionsPlist ExportOptions.plist \
+            -authenticationKeyPath fastlane/AuthKey_NP997PBKF9.p8 \
+            -authenticationKeyID ${{ secrets.APPLE_KEY_ID }} \
+            -authenticationKeyIssuerID ${{ secrets.APPLE_ISSUER_ID }}
+
+      - name: Upload to TestFlight
+        run: |
+          xcrun altool --upload-app \
+            --type ios \
+            --file "$(ls build/ios/ipa/*.ipa | head -1)" \
+            --apiKey ${{ secrets.APPLE_KEY_ID }} \
+            --apiIssuer ${{ secrets.APPLE_ISSUER_ID }}
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Nusha3-iOS-${{ github.run_number }}.ipa
+          path: build/ios/ipa/*.ipa
+          retention-days: 30
