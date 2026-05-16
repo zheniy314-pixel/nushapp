@@ -55,4 +55,12 @@ flutter {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+    
+    // Add Flutter Engine explicitly for Kotlin compilation
+    val flutterRoot = System.getenv("FLUTTER_ROOT") 
+        ?: File(rootProject.projectDir, "../../").canonicalPath
+    val engineDir = File("$flutterRoot/bin/cache/artifacts/engine/android-arm64-release")
+    if (engineDir.exists()) {
+        compileOnly(fileTree(mapOf("dir" to engineDir.absolutePath, "include" to listOf("*.jar"))))
+    }
 }
