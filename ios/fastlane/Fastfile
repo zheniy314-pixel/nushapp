@@ -1,0 +1,475 @@
+default_platform(:ios)
+
+ISSUER_ID = ENV["APP_STORE_CONNECT_ISSUER_ID"]
+KEY_ID    = ENV["APP_STORE_CONNECT_KEY_ID"]
+KEY_PATH  = ENV["APP_STORE_CONNECT_KEY_PATH"]
+
+def load_app_store_key!
+  unless ISSUER_ID && KEY_ID && KEY_PATH && File.exist?(KEY_PATH)
+    UI.user_error!("Set APP_STORE_CONNECT_ISSUER_ID, APP_STORE_CONNECT_KEY_ID, APP_STORE_CONNECT_KEY_PATH")
+  end
+
+  app_store_connect_api_key(
+    key_id: KEY_ID,
+    issuer_id: ISSUER_ID,
+    key_filepath: KEY_PATH,
+    duration: 1200,
+    in_house: false
+  )
+end
+
+platform :ios do
+
+  desc "Привязать уже загруженный build к beta-группам"
+  lane :attach_groups do
+    load_app_store_key!
+
+    app_bundle   = ENV["BUNDLE_ID"] || "com.calc.domeClient"
+    version_num  = (ENV["VERSION_NUMBER"] || "2220").to_s
+    group_names  = (ENV["BETA_GROUPS"] || "Go+++ Testers,Go+++ Testers 2").split(",").map(&:strip)
+
+    require 'spaceship'
+    app = Spaceship::ConnectAPI::App.find(app_bundle)
+    UI.user_error!("App #{app_bundle} not found") unless app
+
+    UI.message "App: #{app.name} (#{app.bundle_id})"
+
+    build = nil
+    30.times do |i|
+      builds = app.get_builds(includes: "buildBetaDetail", limit: 100, sort: "-uploadedDate")
+      build = builds.find { |b| b.version.to_s == version_num }
+      if build && build.processing_state == "VALID"
+        break
+      end
+      UI.message "[#{i+1}/30] build #{version_num} state=#{build&.processing_state || 'not-found'}; waiting..."
+      sleep 20
+    end
+
+    UI.user_error!("Build #{version_num} not ready") unless build && build.processing_state == "VALID"
+
+    UI.success "Build: #{build.version} (id=#{build.id}, state=#{build.processing_state})"
+
+    all_groups = app.get_beta_groups(limit: 200)
+    UI.message "All beta groups: #{all_groups.map(&:name).join(', ')}"
+
+    begin
+      Spaceship::ConnectAPI.patch_builds(
+        build_id: build.id,
+        attributes: { usesNonExemptEncryption: false }
+      )
+      UI.success "Set usesNonExemptEncryption=false for build #{build.version}"
+    rescue => e
+      UI.important "Could not set export compliance: #{e.message}"
+    end
+
+    begin
+      Spaceship::ConnectAPI.post_beta_app_review_submissions(build_id: build.id)
+      UI.success "Submitted build #{build.version} for beta review"
+    rescue => e
+      UI.important "Beta review submit: #{e.message}"
+    end
+
+    group_names.each do |name|
+      group = all_groups.find { |g| g.name == name }
+      if group.nil?
+        UI.important "Beta group not found: #{name}"
+        next
+      end
+      begin
+        build.add_beta_groups(beta_groups: [group])
+        UI.success "Attached build #{build.version} to '#{name}'"
+      rescue => e
+        UI.important "Could not attach '#{name}': #{e.message}"
+      end
+    end
+  end
+
+  desc "Загрузить уже собранный IPA в TestFlight"
+  lane :upload_only do
+    api_key = load_app_store_key!
+
+    ipa_path = File.expand_path("../../build/ios/ipa/calc2.ipa", __dir__)
+    unless File.exist?(ipa_path)
+      UI.user_error!("IPA not found at #{ipa_path}. Build it first with 'flutter build ipa --release'.")
+    end
+
+    upload_to_testflight(
+      api_key: api_key,
+      ipa: ipa_path,
+      expire_previous_builds: false,
+      distribute_external: false,
+      skip_waiting_for_build_processing: true,
+      changelog: ENV["TESTFLIGHT_CHANGELOG"] || "v2.1.10 (2220): восстановлена загрузка фото и медиа, добавлена защита от 404 между серверами, улучшены Android media permissions и обновления."
+    )
+
+    begin
+      require 'spaceship'
+      Spaceship::ConnectAPI.token = Spaceship::ConnectAPI::Token.create(
+        key_id: ENV["APP_STORE_CONNECT_KEY_ID"],
+        issuer_id: ENV["APP_STORE_CONNECT_ISSUER_ID"],
+        filepath: ENV["APP_STORE_CONNECT_KEY_PATH"]
+      )
+      app = Spaceship::ConnectAPI::App.find("com.calc.domeClient")
+      version_number = (ENV["VERSION_NUMBER"] || "2220").to_s
+      UI.message "Waiting for build #{version_number} processing..."
+      build = nil
+      30.times do
+        builds = app.get_builds(includes: "buildBetaDetail", limit: 100, sort: "-uploadedDate")
+        build = builds.find { |b| b.version.to_s == version_number }
+        break if build && build.processing_state == "VALID"
+        sleep 10
+      end
+      if build && build.processing_state == "VALID"
+        begin
+          Spaceship::ConnectAPI.patch_builds(
+            build_id: build.id,
+            attributes: { usesNonExemptEncryption: false }
+          )
+          UI.success "Set usesNonExemptEncryption=false for build #{build.version}"
+        rescue => e
+          UI.important "Could not set export compliance: #{e.message}"
+        end
+        begin
+          Spaceship::ConnectAPI.post_beta_app_review_submissions(build_id: build.id)
+          UI.success "Submitted build #{version_number} for external beta review"
+        rescue => e
+          UI.important "Beta review submit: #{e.message}"
+        end
+        all_groups = app.get_beta_groups(limit: 200)
+        ["Go+++ Testers", "Go+++ Testers 2"].each do |name|
+          group = all_groups.find { |g| g.name == name }
+          if group
+            begin
+              build.add_beta_groups(beta_groups: [group])
+              UI.success "Attached build #{version_number} to '#{name}'"
+            rescue => e
+              UI.important "Could not attach to '#{name}': #{e.message}"
+            end
+          end
+        end
+      else
+        UI.important "Build #{version_number} still processing — groups можно добавить позже"
+      end
+    rescue => e
+      UI.important "External distribution step skipped: #{e.message}"
+    end
+  end
+
+  desc "Собрать IPA и загрузить в TestFlight"
+  lane :build_and_testflight do
+    api_key = load_app_store_key!
+    version_num = (
+      ENV["VERSION_NUMBER"] ||
+      ENV["FLUTTER_BUILD_NUMBER"] ||
+      "2220"
+    ).to_s
+    build_name = (
+      ENV["FLUTTER_BUILD_NAME"] ||
+      ENV["VERSION_NAME"] ||
+      ENV["APP_VERSION"] ||
+      ""
+    ).to_s
+
+    # Сначала Flutter компилирует Dart → App.framework
+    flutter_build_cmd = "cd ../.. && flutter build ios --release --no-codesign --build-number #{version_num}"
+    flutter_build_cmd += " --build-name #{build_name}" unless build_name.empty?
+    sh("#{flutter_build_cmd} 2>&1")
+
+    build_app(
+      workspace: "Runner.xcworkspace",
+      scheme: "Runner",
+      export_method: "app-store",
+      export_options: {
+        method: "app-store",
+        signingStyle: "automatic",
+        teamID: "T5P2P6NTS6"
+      },
+      output_directory: "../build/ios/ipa/",
+      output_name: "calc2.ipa",
+      clean: false,
+      silent: false,
+      xcargs: build_name.empty? ?
+        "FLUTTER_BUILD_NUMBER=#{version_num}" :
+        "FLUTTER_BUILD_NUMBER=#{version_num} FLUTTER_BUILD_NAME=#{build_name}"
+    )
+
+    upload_to_testflight(
+      api_key: api_key,
+      ipa: "../build/ios/ipa/calc2.ipa",
+      expire_previous_builds: false,
+      distribute_external: false,
+      skip_waiting_for_build_processing: true,
+      changelog: ENV["TESTFLIGHT_CHANGELOG"] || "v2.1.10 (2220): восстановлена загрузка фото и медиа, добавлена защита от 404 между серверами, улучшены Android media permissions и обновления."
+    )
+
+    begin
+      require 'spaceship'
+      Spaceship::ConnectAPI.token = Spaceship::ConnectAPI::Token.create(
+        key_id: ENV["APP_STORE_CONNECT_KEY_ID"],
+        issuer_id: ENV["APP_STORE_CONNECT_ISSUER_ID"],
+        filepath: ENV["APP_STORE_CONNECT_KEY_PATH"]
+      )
+      app = Spaceship::ConnectAPI::App.find("com.calc.domeClient")
+      version_number = (ENV["VERSION_NUMBER"] || "2220").to_s
+      UI.message "Waiting for build #{version_number} processing..."
+      build = nil
+      30.times do
+        builds = app.get_builds(includes: "buildBetaDetail", limit: 100, sort: "-uploadedDate")
+        build = builds.find { |b| b.version.to_s == version_number }
+        break if build && build.processing_state == "VALID"
+        sleep 10
+      end
+      if build && build.processing_state == "VALID"
+        all_groups = app.get_beta_groups(limit: 200)
+        ["Go+++ Testers", "Go+++ Testers 2"].each do |name|
+          group = all_groups.find { |g| g.name == name }
+          if group
+            begin
+              build.add_beta_groups(beta_groups: [group])
+              UI.success "Attached build #{version_number} to '#{name}'"
+            rescue => e
+              UI.important "Could not attach to '#{name}': #{e.message}"
+            end
+          end
+        end
+        begin
+          Spaceship::ConnectAPI.post_beta_app_review_submissions(build_id: build.id)
+          UI.success "Submitted build #{version_number} for external beta review"
+        rescue => e
+          UI.important "Beta review submit: #{e.message}"
+        end
+      else
+        UI.important "Build #{version_number} still processing — submit на review сделайте вручную позже"
+      end
+    rescue => e
+      UI.important "External distribution step skipped: #{e.message}"
+    end
+  end
+
+  lane :check do
+    load_app_store_key!
+    require 'spaceship'
+    app = Spaceship::ConnectAPI::App.find("com.calc.domeClient")
+    UI.message "App: #{app.name} (#{app.bundle_id})"
+    builds = app.get_builds(includes: "buildBetaDetail", limit: 8, sort: "-uploadedDate")
+    builds.each do |b|
+      bd = b.build_beta_detail rescue nil
+      UI.message "  v=#{b.version}  processing=#{b.processing_state}  expired=#{b.expired}  int=#{bd&.internal_build_state}  ext=#{bd&.external_build_state}  uploaded=#{b.uploaded_date}"
+    end
+    groups = app.get_beta_groups(limit: 50)
+    UI.message "=== Beta Groups ==="
+    groups.each do |g|
+      bs = g.get_builds(limit: 3, sort: "-uploadedDate") rescue []
+      UI.message "  '#{g.name}'  builds: #{bs.map{|b|b.version}.join(', ')}"
+    end
+  end
+
+  desc "Проверить / найти APNs Auth Key и Push capability у приложения"
+  lane :push_status do
+    load_app_store_key!
+    require 'spaceship'
+    UI.message "=== APNs keys (App Store Connect → Keys → Apple Push Notifications service) ==="
+    begin
+      keys = Spaceship::ConnectAPI.get_api_keys(limit: 100).to_models rescue []
+      apns_keys = keys.select { |k| (k.roles || []).include?("APNS") rescue false }
+      UI.message "Всего API keys: #{keys.size}; из них APNs: #{apns_keys.size}"
+      apns_keys.each do |k|
+        UI.success "  APNs key: id=#{k.id} name='#{k.name}' roles=#{k.roles.inspect}"
+      end
+    rescue => e
+      UI.important "get_api_keys: #{e.message}"
+    end
+
+    UI.message "=== App ID capability в Developer Portal ==="
+    begin
+      Spaceship::ConnectAPI.auth(
+        key_id: ENV["APP_STORE_CONNECT_KEY_ID"],
+        issuer_id: ENV["APP_STORE_CONNECT_ISSUER_ID"],
+        filepath: ENV["APP_STORE_CONNECT_KEY_PATH"]
+      )
+      bundles = Spaceship::ConnectAPI::BundleId.all(filter: { identifier: "com.calc.domeClient" }, limit: 5, includes: "bundleIdCapabilities")
+      bundle = bundles.first
+      if bundle
+        UI.success "BundleId: #{bundle.identifier} id=#{bundle.id}"
+        caps = bundle.bundle_id_capabilities rescue []
+        if caps.empty?
+          UI.important "Нет capabilities в ответе — попробую альтернативный путь"
+          begin
+            list = Spaceship::ConnectAPI.get_bundle_id_capabilities(bundle_id_id: bundle.id, limit: 100).to_models rescue []
+            caps = list
+          rescue => e2
+            UI.important "alt path: #{e2.message}"
+          end
+        end
+        caps.each { |c| UI.success "  capability: #{c.capability_type rescue c.inspect}" }
+        if caps.any? { |c| (c.capability_type rescue "").to_s.include?("PUSH_NOTIFICATIONS") }
+          UI.success "PUSH_NOTIFICATIONS ✓ включён"
+        else
+          UI.important "PUSH_NOTIFICATIONS ✗ НЕ найден — проверьте вручную"
+        end
+      else
+        UI.important "BundleId com.calc.domeClient не найден"
+      end
+    rescue => e
+      UI.important "ConnectAPI.auth: #{e.message}"
+      UI.important e.backtrace&.take(3)&.join("\n")
+    end
+  end
+
+  desc "Показать Team ID и Bundle ID (нужно для APNs)"
+  lane :team_info do
+    load_app_store_key!
+    require 'spaceship'
+    app = Spaceship::ConnectAPI::App.find("com.calc.domeClient")
+    UI.success "Bundle: #{app.bundle_id}"
+    UI.success "App ID:  #{app.id}"
+    UI.success "Name:    #{app.name}"
+    team_id = ENV["APP_STORE_CONNECT_TEAM_ID"] || ENV["FASTLANE_TEAM_ID"]
+    if team_id
+      UI.success "Team ID (env): #{team_id}"
+    else
+      UI.message "Team ID не в env. Читаю через account..."
+      begin
+        acc = Spaceship::ConnectAPI.client
+        UI.message "Provider info: #{acc.token.in_app_purchases rescue ''}"
+      rescue => e
+        UI.important "Failed: #{e.message}"
+      end
+    end
+    begin
+      keys = Spaceship::ConnectAPI::APIKey.all rescue []
+      keys.each do |k|
+        UI.success "API Key: id=#{k.id} name=#{k.name rescue ''} roles=#{k.roles rescue ''}"
+      end
+    rescue => e
+      UI.important "APIKey.all: #{e.message}"
+    end
+  end
+
+  desc "Проверить App Store Connect users"
+  lane :who_am_i do
+    load_app_store_key!
+    require 'spaceship'
+    target = ENV["DEV_EMAIL"] || "zheniy314@icloud.com"
+    users = Spaceship::ConnectAPI::User.all(limit: 200) rescue []
+    UI.message "Всего пользователей App Store Connect: #{users.size}"
+    users.each do |u|
+      mark = (u.email.to_s.downcase == target.downcase) ? "  <== ТЕБЕ" : ""
+      UI.message "  - #{u.email}  roles=#{u.roles.inspect}  all_apps=#{u.all_apps_visible}  provisioning=#{u.provisioning_allowed}#{mark}"
+    end
+  end
+
+  desc "Найти или создать внутреннюю группу и засунуть туда актуальный build + email разработчика"
+  lane :promote_internal do
+    load_app_store_key!
+    require 'spaceship'
+
+    email       = ENV["DEV_EMAIL"] || "zheniy314@icloud.com"
+    version_num = (ENV["VERSION_NUMBER"] || "2220").to_s
+    group_name  = ENV["INTERNAL_GROUP"] || "Dev Internal"
+
+    app = Spaceship::ConnectAPI::App.find("com.calc.domeClient")
+    UI.message "App: #{app.name} (id=#{app.id})"
+
+    builds = app.get_builds(limit: 30, sort: "-uploadedDate")
+    build = builds.find { |b| b.version.to_s == version_num }
+    UI.user_error!("Build #{version_num} not found") unless build
+    UI.success "Build #{build.version} found (id=#{build.id}, state=#{build.processing_state})"
+
+    groups = app.get_beta_groups(limit: 100)
+    groups.each { |g| UI.message "  group: name='#{g.name}' internal=#{g.is_internal_group} id=#{g.id}" }
+
+    internal = groups.find { |g| g.is_internal_group }
+    if internal.nil?
+      UI.message "No internal groups found — creating '#{group_name}'"
+      begin
+        internal = Spaceship::ConnectAPI::BetaGroup.create(
+          app_id: app.id,
+          name: group_name,
+          is_internal_group: true,
+          public_link_enabled: false
+        )
+        UI.success "Created internal group '#{internal.name}' (id=#{internal.id})"
+      rescue => e
+        UI.important "BetaGroup.create failed: #{e.message}"
+        raise
+      end
+    else
+      UI.success "Using existing internal group: #{internal.name} (id=#{internal.id})"
+    end
+
+    existing_testers = Spaceship::ConnectAPI::BetaTester.all(filter: { email: email }, limit: 5) rescue []
+    tester = existing_testers.first
+    if tester
+      UI.success "Tester #{email} already exists (id=#{tester.id})"
+    else
+      UI.message "Creating tester #{email}..."
+      begin
+        tester = Spaceship::ConnectAPI::BetaTester.create(
+          email: email,
+          first_name: "Admin",
+          last_name: "Main",
+          beta_groups: [internal]
+        )
+        UI.success "Created tester #{email}"
+      rescue => e
+        UI.important "Create tester: #{e.message}"
+      end
+    end
+
+    if tester
+      begin
+        internal.add_beta_testers(beta_tester_ids: [tester.id])
+        UI.success "Added '#{email}' (id=#{tester.id}) to internal group '#{internal.name}'"
+      rescue => e
+        msg = e.message
+        if msg.include?("already") || msg.include?("already associated")
+          UI.success "Already in group: #{email}"
+        else
+          UI.important "Add to internal group: #{msg}"
+        end
+      end
+
+      begin
+        tester_groups = tester.get_beta_groups rescue []
+        UI.message "Tester now in groups: #{tester_groups.map(&:name).join(', ')}"
+      rescue => e
+        UI.important "Check groups: #{e.message}"
+      end
+    end
+
+    UI.success "==="
+    UI.success "Внутренние тестеры автоматически видят ВСЕ билды без явной привязки."
+    UI.success "Build #{version_num} в TestFlight → откройте приложение TestFlight → NUSHA → Update."
+  end
+
+  desc "Expire all builds except the latest"
+  lane :expire_old do
+    load_app_store_key!
+    app_bundle = ENV["BUNDLE_ID"] || "com.calc.domeClient"
+    keep_count = (ENV["KEEP"] || "1").to_i
+
+    app = Spaceship::ConnectAPI::App.find(app_bundle)
+    raise "App not found" unless app
+
+    builds = app.get_builds(includes: "buildBetaDetail", sort: "-uploadedDate", limit: 100)
+      .select { |b| b.processing_state == "VALID" && !b.expired }
+
+    UI.message "Found #{builds.count} non-expired VALID builds"
+
+    to_expire = builds.drop(keep_count)
+    UI.message "Expiring #{to_expire.count} old builds, keeping #{keep_count} newest"
+
+    to_expire.each do |b|
+      UI.message "  Expiring build #{b.version} (uploaded #{b.uploaded_date&.strftime('%Y-%m-%d')})"
+      begin
+        b.expire!
+        UI.success "    Expired build #{b.version}"
+      rescue => e
+        UI.error "    Failed to expire #{b.version}: #{e}"
+      end
+    end
+    UI.success "Done! Kept #{builds.first(keep_count).map(&:version).join(', ')}"
+  end
+
+end
