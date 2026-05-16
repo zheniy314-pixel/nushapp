@@ -3,7 +3,7 @@ import java.io.FileInputStream
 
 plugins {
     id("com.android.application")
-    id("kotlin-android")
+    id("org.jetbrains.kotlin.android")
     id("dev.flutter.flutter-gradle-plugin")
 }
 
@@ -30,8 +30,6 @@ android {
                 storePassword = System.getenv("KEY_STORE_PASSWORD") ?: "nusha3pass"
                 keyAlias = System.getenv("KEY_ALIAS") ?: "nusha3"
                 keyPassword = System.getenv("KEY_PASSWORD") ?: "nusha3pass"
-            } else {
-                storeFile = file("../../android/app/debug.keystore") 
             }
         }
     }
