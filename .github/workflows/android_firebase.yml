@@ -1,4 +1,4 @@
-﻿name: Android Firebase Distribution
+name: Android Firebase Distribution
 
 on:
   push:
@@ -29,7 +29,7 @@ jobs:
       - name: Flutter pub get
         run: flutter pub get
 
-      - name: Write key.properties
+      - name: Write keystore
         env:
           KEY_STORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           KEY_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -37,19 +37,18 @@ jobs:
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           echo "$KEY_STORE_BASE64" | base64 --decode > android/app/nusha3.jks
-          cat > android/key.properties <<EOF
-          storePassword=$KEY_STORE_PASSWORD
-          keyPassword=$KEY_PASSWORD
-          keyAlias=$KEY_ALIAS
-          storeFile=../app/nusha3.jks
-          EOF
+          echo "keystore written: $(ls -la android/app/nusha3.jks)"
 
       - name: Write google-services.json
         env:
-          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+          GOOGLE_SERVICES_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
         run: echo "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
 
       - name: Build Release APK
+        env:
+          KEY_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: flutter build apk --release --build-name=1.1.0 --build-number=${{ github.run_number }}
 
       - name: Upload to Firebase App Distribution
@@ -58,7 +57,7 @@ jobs:
           appId: 1:831245997772:android:7521d90ba70d32b4e09469
           serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
           groups: testers
-          releaseNotes: "Nusha3 v1.1.0 build ${{ github.run_number }} - автосборка"
+          releaseNotes: "Nusha3 v1.1.0 - WebRTC calls, conferences, news channels"
           file: build/app/outputs/flutter-apk/app-release.apk
 
       - name: Upload APK artifact
@@ -67,4 +66,3 @@ jobs:
           name: Nusha3-Android-${{ github.run_number }}.apk
           path: build/app/outputs/flutter-apk/app-release.apk
           retention-days: 30
-
