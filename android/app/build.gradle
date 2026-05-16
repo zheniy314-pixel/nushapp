@@ -54,6 +54,34 @@ flutter {
     source "../.."
 }
 
+def GPR_STUB = 'package io.flutter.plugins;\n' +
+    'import androidx.annotation.Keep;\n' +
+    'import androidx.annotation.NonNull;\n' +
+    'import io.flutter.embedding.engine.FlutterEngine;\n' +
+    '@Keep\n' +
+    'public final class GeneratedPluginRegistrant {\n' +
+    '    private static final String TAG = "GeneratedPluginRegistrant";\n' +
+    '    public static void registerWith(@NonNull FlutterEngine flutterEngine) {}\n' +
+    '}\n'
+
+def stubGPR = tasks.register("stubGeneratedPluginRegistrant") {
+    doFirst {
+        def gprFile = file("src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java")
+        gprFile.parentFile.mkdirs()
+        gprFile.text = GPR_STUB
+        println("Stubbed GeneratedPluginRegistrant.java")
+    }
+}
+
+afterEvaluate {
+    tasks.matching { it.name.startsWith("compile") && it.name.contains("Java") }.each { task ->
+        task.dependsOn stubGPR
+    }
+    tasks.matching { it.name.startsWith("compile") && it.name.contains("Kotlin") }.each { task ->
+        task.dependsOn stubGPR
+    }
+}
+
 dependencies {
     coreLibraryDesugaring "com.android.tools:desugar_jdk_libs:2.1.4"
 }
