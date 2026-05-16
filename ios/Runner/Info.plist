@@ -1,131 +1,79 @@
-﻿<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <!-- ─── Базовые ─────────────────────────────────────────── -->
-    <key>CFBundleDevelopmentRegion</key>
-    <string>ru</string>
-    <key>CFBundleDisplayName</key>
-    <string>Калькулятор</string>
-    <key>CFBundleExecutable</key>
-    <string>$(EXECUTABLE_NAME)</string>
-    <key>CFBundleIdentifier</key>
-    <string>com.calc.domeClient</string>
-    <key>CFBundleInfoDictionaryVersion</key>
-    <string>6.0</string>
-    <key>CFBundleName</key>
-    <string>nusha3</string>
-    <key>CFBundlePackageType</key>
-    <string>APPL</string>
-    <key>CFBundleShortVersionString</key>
-    <string>1.0.0</string>
-    <key>CFBundleSignature</key>
-    <string>????</string>
-    <key>CFBundleVersion</key>
-    <string>1</string>
-
-    <!-- ─── Разрешения (NSUsage описания для App Store) ──── -->
-    <key>NSCameraUsageDescription</key>
-    <string>Камера нужна для видеозвонков и отправки фото.</string>
-
-    <key>NSMicrophoneUsageDescription</key>
-    <string>Микрофон нужен для голосовых и видеозвонков.</string>
-
-    <key>NSPhotoLibraryUsageDescription</key>
-    <string>Доступ к фото нужен для отправки изображений.</string>
-
-    <key>NSPhotoLibraryAddUsageDescription</key>
-    <string>Доступ нужен для сохранения фото из чатов.</string>
-
-    <key>NSContactsUsageDescription</key>
-    <string>Контакты нужны для поиска пользователей Нуша.</string>
-
-    <key>NSBluetoothAlwaysUsageDescription</key>
-    <string>Bluetooth используется для доставки сообщений без интернета.</string>
-
-    <key>NSBluetoothPeripheralUsageDescription</key>
-    <string>Bluetooth нужен для передачи данных между устройствами.</string>
-
-    <key>NSLocalNetworkUsageDescription</key>
-    <string>Локальная сеть нужна для передачи сообщений через WiFi Direct.</string>
-
-    <key>NSFaceIDUsageDescription</key>
-    <string>Face ID используется для входа в защищённый мессенджер.</string>
-
-    <key>NSSpeechRecognitionUsageDescription</key>
-    <string>Распознавание речи для голосовых сообщений.</string>
-
-    <!-- ─── Фоновые режимы ──────────────────────────────── -->
-    <key>UIBackgroundModes</key>
-    <array>
-        <string>audio</string>
-        <string>voip</string>
-        <string>fetch</string>
-        <string>remote-notification</string>
-        <string>bluetooth-central</string>
-        <string>bluetooth-peripheral</string>
-        <string>processing</string>
-    </array>
-
-    <!-- ─── CallKit / VoIP ─────────────────────────────── -->
-    <key>UIRequiredDeviceCapabilities</key>
-    <array>
-        <string>armv7</string>
-    </array>
-
-    <!-- ─── Ориентация ─────────────────────────────────── -->
-    <key>UISupportedInterfaceOrientations</key>
-    <array>
-        <string>UIInterfaceOrientationPortrait</string>
-        <string>UIInterfaceOrientationLandscapeLeft</string>
-        <string>UIInterfaceOrientationLandscapeRight</string>
-    </array>
-    <key>UISupportedInterfaceOrientations~ipad</key>
-    <array>
-        <string>UIInterfaceOrientationPortrait</string>
-        <string>UIInterfaceOrientationPortraitUpsideDown</string>
-        <string>UIInterfaceOrientationLandscapeLeft</string>
-        <string>UIInterfaceOrientationLandscapeRight</string>
-    </array>
-
-    <!-- ─── Deep links ────────────────────────────────── -->
-    <key>CFBundleURLTypes</key>
-    <array>
-        <dict>
-            <key>CFBundleTypeRole</key>
-            <string>Editor</string>
-            <key>CFBundleURLSchemes</key>
-            <array>
-                <string>nusha</string>
-            </array>
-        </dict>
-    </array>
-
-    <!-- ─── App Transport Security ───────────────────── -->
-    <key>NSAppTransportSecurity</key>
-    <dict>
-        <key>NSAllowsArbitraryLoads</key>
-        <false/>
-        <key>NSExceptionDomains</key>
-        <dict>
-            <key>141.98.191.108</key>
-            <dict>
-                <key>NSExceptionAllowsInsecureHTTPLoads</key>
-                <true/>
-                <key>NSIncludesSubdomains</key>
-                <true/>
-            </dict>
-        </dict>
-    </dict>
-
-    <!-- ─── Flutter ───────────────────────────────────── -->
-    <key>CADisableMinimumFrameDurationOnPhone</key>
-    <true/>
-    <key>UIApplicationSupportsIndirectInputEvents</key>
-    <true/>
-
-    <!-- ─── App Switcher protection ──────────────────── -->
-    <!-- Реализуется через UIApplication.willResignActiveNotification в AppDelegate -->
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>Калькулятор</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>calc2</string>
+	<key>CFBundleIconName</key>
+	<string>AppIcon</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(FLUTTER_BUILD_NAME)</string>
+	<key>CFBundleSignature</key>
+	<string>????</string>
+	<key>CFBundleVersion</key>
+	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Требуется для сохранения фотографий в галерею</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Требуется для загрузки фотографий</string>
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<false/>
+	</dict>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
+	<key>UILaunchStoryboardName</key>
+	<string>LaunchScreen</string>
+	<key>UIMainStoryboardFile</key>
+	<string>Main</string>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>Нужен доступ к камере для видеозвонков и съёмки фото/видео.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Нужен доступ к микрофону для голосовых сообщений и звонков.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Нужен доступ к фото для отправки изображений и видео в чат.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Сохраняем полученные медиа в вашу галерею.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>Чтобы находить друзей по контактам.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+		<string>voip</string>
+		<string>remote-notification</string>
+		<string>fetch</string>
+	</array>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 </dict>
 </plist>
-
