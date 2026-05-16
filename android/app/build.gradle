@@ -54,30 +54,23 @@ flutter {
     source "../.."
 }
 
-def GPR_STUB = 'package io.flutter.plugins;\n' +
-    'import androidx.annotation.Keep;\n' +
-    'import androidx.annotation.NonNull;\n' +
-    'import io.flutter.embedding.engine.FlutterEngine;\n' +
-    '@Keep\n' +
+// Minimal stub - no imports needed, zero dependencies
+def MINIMAL_GPR_STUB = 'package io.flutter.plugins;\n' +
     'public final class GeneratedPluginRegistrant {\n' +
-    '    private static final String TAG = "GeneratedPluginRegistrant";\n' +
-    '    public static void registerWith(@NonNull FlutterEngine flutterEngine) {}\n' +
+    '    public static void registerWith(Object flutterEngine) {}\n' +
     '}\n'
 
 def stubGPR = tasks.register("stubGeneratedPluginRegistrant") {
     doFirst {
         def gprFile = file("src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java")
         gprFile.parentFile.mkdirs()
-        gprFile.text = GPR_STUB
-        println("Stubbed GeneratedPluginRegistrant.java")
+        gprFile.text = MINIMAL_GPR_STUB
+        println("Minimal GPR stub written: " + gprFile.absolutePath)
     }
 }
 
 afterEvaluate {
-    tasks.matching { it.name.startsWith("compile") && it.name.contains("Java") }.each { task ->
-        task.dependsOn stubGPR
-    }
-    tasks.matching { it.name.startsWith("compile") && it.name.contains("Kotlin") }.each { task ->
+    tasks.matching { it.name.startsWith("compile") && (it.name.contains("Java") || it.name.contains("Kotlin")) }.each { task ->
         task.dependsOn stubGPR
     }
 }
