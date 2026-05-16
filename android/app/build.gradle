@@ -1,0 +1,65 @@
+plugins {
+    id "com.android.application"
+    id "kotlin-android"
+    id "dev.flutter.flutter-gradle-plugin"
+}
+
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file('key.properties')
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
+android {
+    namespace "com.nusha.messenger"
+    compileSdkVersion flutter.compileSdkVersion
+    ndkVersion flutter.ndkVersion
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+        coreLibraryDesugaringEnabled true
+    }
+
+    kotlinOptions {
+        jvmTarget = JavaVersion.VERSION_17
+    }
+
+    sourceSets {
+        main.java.srcDirs += 'src/main/kotlin'
+    }
+
+    signingConfigs {
+        release {
+            storeFile file("nusha3.jks")
+            storePassword System.getenv("KEY_STORE_PASSWORD") ?: "nusha3pass"
+            keyAlias System.getenv("KEY_ALIAS") ?: "nusha3"
+            keyPassword System.getenv("KEY_PASSWORD") ?: "nusha3pass"
+        }
+    }
+
+    defaultConfig {
+        applicationId "com.nusha.messenger"
+        minSdkVersion 24
+        targetSdkVersion flutter.targetSdkVersion
+        versionCode 2
+        versionName "1.1.0"
+        multiDexEnabled true
+    }
+
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+            minifyEnabled false
+            shrinkResources false
+        }
+    }
+}
+
+flutter {
+    source '../..'
+}
+
+dependencies {
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'
+}
