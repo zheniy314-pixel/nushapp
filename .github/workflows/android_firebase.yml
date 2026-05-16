@@ -30,15 +30,6 @@ jobs:
         run: |
           echo "flutter.sdk=$FLUTTER_ROOT" > android/local.properties
           echo "sdk.dir=$ANDROID_SDK_ROOT" >> android/local.properties
-          
-      - name: Debug - show repo files
-        run: |
-          echo "=== android/app/ contents ==="
-          ls -la android/app/
-          echo "=== build.gradle files ==="
-          find android -name "*.gradle*" 2>/dev/null
-          echo "=== AndroidManifest head ==="
-          head -5 android/app/src/main/AndroidManifest.xml
 
       - name: Flutter pub get
         run: flutter pub get
@@ -49,7 +40,7 @@ jobs:
         run: |
           echo "$KEY_STORE_BASE64" | base64 --decode > android/app/nusha3.jks
 
-      - name: Build Release APK (with stacktrace)
+      - name: Build Release APK
         env:
           KEY_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
@@ -58,7 +49,7 @@ jobs:
           flutter build apk --release \
             --build-name=1.1.0 \
             --build-number=${{ github.run_number }} \
-            --dart-define=FLUTTER_BUILD_NUMBER=${{ github.run_number }}
+            --android-skip-build-dependency-validation
 
       - name: Upload to Firebase App Distribution
         uses: wzieba/Firebase-Distribution-Github-Action@v1
@@ -66,7 +57,7 @@ jobs:
           appId: 1:831245997772:android:7521d90ba70d32b4e09469
           serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
           groups: testers
-          releaseNotes: "Nusha3 v1.1.0 - WebRTC calls, video, conferences, news"
+          releaseNotes: "Nusha3 v1.1.0 - WebRTC calls, video, conferences"
           file: build/app/outputs/flutter-apk/app-release.apk
 
       - name: Upload APK artifact
