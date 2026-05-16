@@ -1,13 +1,19 @@
-plugins {
-    id "com.android.application"
-    id "kotlin-android"
-    id "dev.flutter.flutter-gradle-plugin"
+// NOTE: this file is the standard Flutter Groovy build format
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withReader("UTF-8") { reader -> localProperties.load(reader) }
 }
 
-def keystoreProperties = new Properties()
-def keystorePropertiesFile = rootProject.file('key.properties')
-if (keystorePropertiesFile.exists()) {
-    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+def flutterSdkPath = localProperties.getProperty("flutter.sdk")
+if (flutterSdkPath == null) {
+    throw new GradleException("flutter.sdk not set in local.properties")
+}
+
+plugins {
+    id "com.android.application"
+    id "org.jetbrains.kotlin.android"
+    id "dev.flutter.flutter-gradle-plugin"
 }
 
 android {
@@ -57,9 +63,20 @@ android {
 }
 
 flutter {
-    source '../..'
+    source "../.."
 }
 
 dependencies {
-    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'
+    coreLibraryDesugaring "com.android.tools:desugar_jdk_libs:2.1.4"
+    
+    // Explicitly add Flutter Engine for Kotlin compilation
+    // This is needed because the plugin sometimes doesn't add it to compileClasspath
+    def engineArmDir = new File("${flutterSdkPath}/bin/cache/artifacts/engine/android-arm64-release")
+    if (engineArmDir.exists()) {
+        compileOnly fileTree(dir: engineArmDir.absolutePath, include: ["*.jar"])
+    }
+    def engineArmDir2 = new File("${flutterSdkPath}/bin/cache/artifacts/engine/android-arm-release")
+    if (engineArmDir2.exists()) {
+        compileOnly fileTree(dir: engineArmDir2.absolutePath, include: ["*.jar"])
+    }
 }
