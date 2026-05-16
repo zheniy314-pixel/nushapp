@@ -20,53 +20,73 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Flutter pub get (generates iOS configs)
-        run: |
-          flutter pub get
-          echo "Generated.xcconfig:"
-          cat ios/Flutter/Generated.xcconfig 2>/dev/null || echo "not found"
+      - name: Flutter pub get
+        run: flutter pub get
 
       - name: Install CocoaPods
         run: |
           cd ios
-          pod install --repo-update
+          pod install
         env:
           LANG: en_US.UTF-8
 
       - name: Write App Store Connect key
         run: |
-          mkdir -p ios/fastlane
-          echo "${{ secrets.APPLE_AUTH_KEY_P8 }}" > ios/fastlane/AuthKey_NP997PBKF9.p8
-          chmod 600 ios/fastlane/AuthKey_NP997PBKF9.p8
+          mkdir -p ~/private_keys
+          echo "${{ secrets.APPLE_AUTH_KEY_P8 }}" > ~/private_keys/AuthKey_NP997PBKF9.p8
+          chmod 600 ~/private_keys/AuthKey_NP997PBKF9.p8
 
-      - name: Build IPA
-        env:
-          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APPLE_KEY_ID }}
-          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APPLE_ISSUER_ID }}
+      - name: Build and Archive
         run: |
-          flutter build ipa --release \
+          flutter build ios --release --no-codesign \
             --build-name=1.1.0 \
-            --build-number=${{ github.run_number }} \
-            --export-options-plist=ios/ExportOptions.plist
+            --build-number=${{ github.run_number }}
+          
+          xcodebuild archive \
+            -workspace ios/Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -archivePath build/Runner.xcarchive \
+            CODE_SIGN_STYLE=Automatic \
+            DEVELOPMENT_TEAM=T5P2P6NTS6 \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath ~/private_keys/AuthKey_NP997PBKF9.p8 \
+            -authenticationKeyID NP997PBKF9 \
+            -authenticationKeyIssuerID ${{ secrets.APPLE_ISSUER_ID }}
 
-      - name: Upload to TestFlight via xcrun
-        env:
-          APPLE_KEY_ID: ${{ secrets.APPLE_KEY_ID }}
-          APPLE_ISSUER_ID: ${{ secrets.APPLE_ISSUER_ID }}
+      - name: Export IPA
         run: |
-          IPA=$(find build/ios/ipa -name "*.ipa" | head -1)
+          xcodebuild -exportArchive \
+            -archivePath build/Runner.xcarchive \
+            -exportPath build/ios-output \
+            -exportOptionsPlist ios/ExportOptions.plist \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath ~/private_keys/AuthKey_NP997PBKF9.p8 \
+            -authenticationKeyID NP997PBKF9 \
+            -authenticationKeyIssuerID ${{ secrets.APPLE_ISSUER_ID }}
+
+      - name: Upload to TestFlight
+        run: |
+          IPA=$(find build/ios-output -name "*.ipa" | head -1)
           echo "Uploading: $IPA"
           xcrun altool --upload-app \
             --type ios \
             --file "$IPA" \
-            --apiKey "$APPLE_KEY_ID" \
-            --apiIssuer "$APPLE_ISSUER_ID" \
-            --verbose
+            --apiKey NP997PBKF9 \
+            --apiIssuer ${{ secrets.APPLE_ISSUER_ID }} \
+            --verbose || \
+          xcrun altool --upload-app \
+            --type ios \
+            --file "$IPA" \
+            --apiKey ${{ secrets.APPLE_KEY_ID }} \
+            --apiIssuer ${{ secrets.APPLE_ISSUER_ID }}
 
       - name: Upload IPA artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: Nusha3-iOS-${{ github.run_number }}.ipa
-          path: build/ios/ipa/*.ipa
+          path: |
+            build/ios-output/*.ipa
+            build/Runner.xcarchive/**
           retention-days: 30
