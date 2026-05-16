@@ -26,6 +26,12 @@ jobs:
           channel: stable
           cache: true
 
+      - name: Write local.properties (Flutter SDK path)
+        run: |
+          echo "flutter.sdk=$FLUTTER_ROOT" > android/local.properties
+          echo "sdk.dir=$ANDROID_SDK_ROOT" >> android/local.properties
+          cat android/local.properties
+
       - name: Flutter pub get
         run: flutter pub get
 
@@ -37,7 +43,7 @@ jobs:
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           echo "$KEY_STORE_BASE64" | base64 --decode > android/app/nusha3.jks
-          echo "keystore written: $(ls -la android/app/nusha3.jks)"
+          echo "Keystore: $(ls -la android/app/nusha3.jks)"
 
       - name: Write google-services.json
         env:
@@ -57,11 +63,12 @@ jobs:
           appId: 1:831245997772:android:7521d90ba70d32b4e09469
           serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
           groups: testers
-          releaseNotes: "Nusha3 v1.1.0 - WebRTC calls, conferences, news channels"
+          releaseNotes: "Nusha3 v1.1.0 - WebRTC calls, video, conferences"
           file: build/app/outputs/flutter-apk/app-release.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: Nusha3-Android-${{ github.run_number }}.apk
           path: build/app/outputs/flutter-apk/app-release.apk
