@@ -1,6 +1,5 @@
 plugins {
     id "com.android.application"
-    id "org.jetbrains.kotlin.android"
     id "dev.flutter.flutter-gradle-plugin"
 }
 
@@ -13,14 +12,6 @@ android {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
         coreLibraryDesugaringEnabled true
-    }
-
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17
-    }
-
-    sourceSets {
-        main.java.srcDirs += 'src/main/kotlin'
     }
 
     signingConfigs {
@@ -54,7 +45,6 @@ flutter {
     source "../.."
 }
 
-// Minimal stub - no imports needed, zero dependencies
 def MINIMAL_GPR_STUB = 'package io.flutter.plugins;\n' +
     'public final class GeneratedPluginRegistrant {\n' +
     '    public static void registerWith(Object flutterEngine) {}\n' +
@@ -65,7 +55,7 @@ def stubGPR = tasks.register("stubGeneratedPluginRegistrant") {
         def gprFile = file("src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java")
         gprFile.parentFile.mkdirs()
         gprFile.text = MINIMAL_GPR_STUB
-        println("Minimal GPR stub written: " + gprFile.absolutePath)
+        println("Minimal GPR stub written")
     }
 }
 
