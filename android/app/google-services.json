@@ -1,0 +1,67 @@
+{
+  "project_info": {
+    "project_number": "831245997772",
+    "project_id": "kal616",
+    "storage_bucket": "kal616.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:831245997772:android:f7cf6a3782b28b1de09469",
+        "android_client_info": {
+          "package_name": "com.calc.dome_client"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDTksXYIqT7yaxGBuSEX712Da4TDC73i-0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:831245997772:android:c2845ec04a026fc0e09469",
+        "android_client_info": {
+          "package_name": "com.elitmobile.calc2"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDTksXYIqT7yaxGBuSEX712Da4TDC73i-0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:831245997772:android:7521d90ba70d32b4e09469",
+        "android_client_info": {
+          "package_name": "com.nusha.messenger"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDTksXYIqT7yaxGBuSEX712Da4TDC73i-0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
