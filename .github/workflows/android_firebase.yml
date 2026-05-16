@@ -30,6 +30,15 @@ jobs:
         run: |
           echo "flutter.sdk=$FLUTTER_ROOT" > android/local.properties
           echo "sdk.dir=$ANDROID_SDK_ROOT" >> android/local.properties
+          
+      - name: Debug - show repo files
+        run: |
+          echo "=== android/app/ contents ==="
+          ls -la android/app/
+          echo "=== build.gradle files ==="
+          find android -name "*.gradle*" 2>/dev/null
+          echo "=== AndroidManifest head ==="
+          head -5 android/app/src/main/AndroidManifest.xml
 
       - name: Flutter pub get
         run: flutter pub get
@@ -40,12 +49,16 @@ jobs:
         run: |
           echo "$KEY_STORE_BASE64" | base64 --decode > android/app/nusha3.jks
 
-      - name: Build Release APK
+      - name: Build Release APK (with stacktrace)
         env:
           KEY_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: flutter build apk --release --build-name=1.1.0 --build-number=${{ github.run_number }}
+        run: |
+          flutter build apk --release \
+            --build-name=1.1.0 \
+            --build-number=${{ github.run_number }} \
+            --dart-define=FLUTTER_BUILD_NUMBER=${{ github.run_number }}
 
       - name: Upload to Firebase App Distribution
         uses: wzieba/Firebase-Distribution-Github-Action@v1
