@@ -22,18 +22,3 @@ plugins {
 }
 
 include ":app"
-
-// Load Flutter plugins as subprojects (from .flutter-plugins file)
-def flutterProjectRoot = rootProject.projectDir.parentFile.toPath()
-def pluginsFile = new File(flutterProjectRoot.toFile(), ".flutter-plugins")
-if (pluginsFile.exists()) {
-    def pluginsProperties = new Properties()
-    pluginsFile.withReader("UTF-8") { reader -> pluginsProperties.load(reader) }
-    pluginsProperties.each { name, path ->
-        def pluginDirectory = flutterProjectRoot.resolve(path).resolve("android").toFile()
-        if (pluginDirectory.exists()) {
-            include ":$name"
-            project(":$name").projectDir = pluginDirectory
-        }
-    }
-}
