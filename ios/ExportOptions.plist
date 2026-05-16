@@ -10,13 +10,9 @@
     <false/>
     <key>uploadSymbols</key>
     <true/>
-    <key>compileBitcode</key>
-    <false/>
-    <key>destination</key>
-    <string>upload</string>
     <key>signingStyle</key>
     <string>automatic</string>
-    <key>stripSwiftSymbols</key>
-    <true/>
+    <key>destination</key>
+    <string>export</string>
 </dict>
 </plist>
