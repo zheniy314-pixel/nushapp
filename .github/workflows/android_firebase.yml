@@ -31,8 +31,13 @@ jobs:
           echo "flutter.sdk=$FLUTTER_ROOT" > android/local.properties
           echo "sdk.dir=$ANDROID_SDK_ROOT" >> android/local.properties
 
-      - name: Flutter pub get
-        run: flutter pub get
+      - name: Flutter pub get (downloads engine cache)
+        run: |
+          flutter pub get
+          # Precache Android engine artifacts
+          flutter precache --android || true
+          echo "Flutter root: $FLUTTER_ROOT"
+          ls $FLUTTER_ROOT/bin/cache/artifacts/engine/ 2>/dev/null | head -5 || echo "No engine dir"
 
       - name: Write keystore
         env:
